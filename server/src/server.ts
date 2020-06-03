@@ -1,13 +1,10 @@
 import express from 'express';
 
+import routes from './routes';
+
 const app = express();
 
-app.get('/users', (request, response) => {
-  return response.send('Hello World');
-});
-
-app.post('/users', (request, response) => {
-  return response.json('Usuário');
-});
+app.use(express.json());
+app.use(routes);
 
 app.listen(5000, () => console.log('🚀 Server started at port 5000'));
