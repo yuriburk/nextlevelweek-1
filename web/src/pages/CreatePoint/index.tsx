@@ -1,12 +1,12 @@
-import React, { useEffect, useState, ChangeEvent } from "react";
-import { Link } from "react-router-dom";
-import { FiArrowLeft } from "react-icons/fi";
-import { Map, TileLayer, Marker } from "react-leaflet";
-import axios from "axios";
-
-import api from "../../services/api";
-import "./styles.css";
-import logo from "../../assets/logo.svg";
+import React, { useEffect, useState, ChangeEvent, FormEvent } from 'react';
+import { Link } from 'react-router-dom';
+import { FiArrowLeft } from 'react-icons/fi';
+import { Map, TileLayer, Marker } from 'react-leaflet';
+import axios from 'axios';
+import { LeafletMouseEvent } from 'leaflet';
+import api from '../../services/api';
+import './styles.css';
+import logo from '../../assets/logo.svg';
 
 interface IItem {
   id: number;
@@ -25,11 +25,37 @@ interface IIBGECityResponse {
 const CreatePoint = () => {
   const [items, setItems] = useState<IItem[]>([]);
   const [ufs, setUfs] = useState<string[]>([]);
-  const [selectedUf, setSelectedUf] = useState<string>("0");
   const [cities, setCities] = useState<string[]>([]);
 
+  const [initialPosition, setInitialPosition] = useState<[number, number]>([
+    0,
+    0,
+  ]);
+
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    whatsapp: '',
+  });
+
+  const [selectedUf, setSelectedUf] = useState<string>('0');
+  const [selectedCity, setSelectedCity] = useState<string>('0');
+  const [selectedPosition, setSelectedPosition] = useState<[number, number]>([
+    0,
+    0,
+  ]);
+  const [selectedItems, setSelectedItems] = useState<number[]>([]);
+
   useEffect(() => {
-    api.get("items").then(response => {
+    navigator.geolocation.getCurrentPosition((position) => {
+      const { latitude, longitude } = position.coords;
+
+      setInitialPosition([latitude, longitude]);
+    });
+  });
+
+  useEffect(() => {
+    api.get('items').then((response) => {
       setItems(response.data);
     });
   }, []);
@@ -37,17 +63,17 @@ const CreatePoint = () => {
   useEffect(() => {
     axios
       .get<IIBGEUFResponse[]>(
-        "https://servicodados.ibge.gov.br/api/v1/localidades/estados"
+        'https://servicodados.ibge.gov.br/api/v1/localidades/estados'
       )
-      .then(response => {
-        const ufInitials = response.data.map(uf => uf.sigla);
+      .then((response) => {
+        const ufInitials = response.data.map((uf) => uf.sigla);
 
         setUfs(ufInitials);
       });
   }, []);
 
   useEffect(() => {
-    if (selectedUf === "0") {
+    if (selectedUf === '0') {
       return;
     }
 
@@ -55,8 +81,8 @@ const CreatePoint = () => {
       .get<IIBGECityResponse[]>(
         `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${selectedUf}/municipios`
       )
-      .then(response => {
-        const citiesNames = response.data.map(city => city.nome);
+      .then((response) => {
+        const citiesNames = response.data.map((city) => city.nome);
 
         setCities(citiesNames);
       });
@@ -64,6 +90,58 @@ const CreatePoint = () => {
 
   const handleSelectUf = (event: ChangeEvent<HTMLSelectElement>) =>
     setSelectedUf(event.target.value);
+
+  const handleSelectCity = (event: ChangeEvent<HTMLSelectElement>) =>
+    setSelectedCity(event.target.value);
+
+  const handleMapClick = (event: LeafletMouseEvent) =>
+    setSelectedPosition([event.latlng.lat, event.latlng.lng]);
+
+  const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+
+    const { name, email, whatsapp } = formData;
+    const uf = selectedUf;
+    const city = selectedCity;
+    const [latitude, longitude] = selectedPosition;
+    const items = selectedItems;
+
+    const data = {
+      name,
+      email,
+      whatsapp,
+      uf,
+      city,
+      latitude,
+      longitude,
+      items,
+    };
+
+    const response = await api.post('points', data);
+
+    if (response.status === 200) {
+      alert('Ponto de coleta criado');
+    } else {
+      alert('Aconteceu um erro ao criar o ponto de coleta');
+    }
+  };
+
+  const handleSelectItem = (id: number) => {
+    const alreadySelected = selectedItems.findIndex((item) => item === id) >= 0;
+
+    if (alreadySelected) {
+      const filteredItems = selectedItems.filter((item) => item !== id);
+
+      setSelectedItems(filteredItems);
+    } else {
+      setSelectedItems([...selectedItems, id]);
+    }
+  };
 
   return (
     <div id="page-create-point">
@@ -75,7 +153,7 @@ const CreatePoint = () => {
         </Link>
       </header>
 
-      <form action="">
+      <form onSubmit={handleSubmit}>
         <h1>
           Cadastro do <br /> ponto de coleta
         </h1>
@@ -87,17 +165,32 @@ const CreatePoint = () => {
 
           <div className="field">
             <label htmlFor="name">Nome da entidade</label>
-            <input type="text" name="name" id="name" />
+            <input
+              type="text"
+              name="name"
+              id="name"
+              onChange={handleInputChange}
+            />
           </div>
 
           <div className="field-group">
             <div className="field">
               <label htmlFor="email">E-mail</label>
-              <input type="email" name="email" id="email" />
+              <input
+                type="email"
+                name="email"
+                id="email"
+                onChange={handleInputChange}
+              />
             </div>
             <div className="field">
               <label htmlFor="whatsapp">Whatsapp</label>
-              <input type="text" name="whatsapp" id="whatsapp" />
+              <input
+                type="text"
+                name="whatsapp"
+                id="whatsapp"
+                onChange={handleInputChange}
+              />
             </div>
           </div>
         </fieldset>
@@ -108,13 +201,13 @@ const CreatePoint = () => {
             <span>Selecione o endereço no mapa</span>
           </legend>
 
-          <Map center={[-27.8045404, -50.3171591]} zoom={15}>
+          <Map center={initialPosition} zoom={15} onClick={handleMapClick}>
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
             />
 
-            <Marker position={[-27.8045404, -50.3171591]} />
+            <Marker position={selectedPosition} />
           </Map>
 
           <div className="field-group">
@@ -127,7 +220,7 @@ const CreatePoint = () => {
                 onChange={handleSelectUf}
               >
                 <option value="0">Selecione uma UF</option>
-                {ufs.map(uf => (
+                {ufs.map((uf) => (
                   <option key={uf} value={uf}>
                     {uf}
                   </option>
@@ -136,9 +229,14 @@ const CreatePoint = () => {
             </div>
             <div className="field">
               <label htmlFor="city">Cidade</label>
-              <select name="city" id="city">
+              <select
+                name="city"
+                id="city"
+                value={selectedCity}
+                onChange={handleSelectCity}
+              >
                 <option value="0">Selecione uma cidade</option>
-                {cities.map(city => (
+                {cities.map((city) => (
                   <option key={city} value={city}>
                     {city}
                   </option>
@@ -155,8 +253,12 @@ const CreatePoint = () => {
           </legend>
 
           <ul className="items-grid">
-            {items.map(item => (
-              <li key={item.id}>
+            {items.map((item) => (
+              <li
+                key={item.id}
+                onClick={() => handleSelectItem(item.id)}
+                className={selectedItems.includes(item.id) ? 'selected' : ''}
+              >
                 <img src={item.image_url} alt={item.title} />
                 <span>{item.title}</span>
               </li>
