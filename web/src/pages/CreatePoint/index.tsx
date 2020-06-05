@@ -1,5 +1,5 @@
 import React, { useEffect, useState, ChangeEvent, FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { FiArrowLeft } from 'react-icons/fi';
 import { Map, TileLayer, Marker } from 'react-leaflet';
 import axios from 'axios';
@@ -45,6 +45,8 @@ const CreatePoint = () => {
     0,
   ]);
   const [selectedItems, setSelectedItems] = useState<number[]>([]);
+
+  const history = useHistory();
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition((position) => {
@@ -126,6 +128,8 @@ const CreatePoint = () => {
 
     if (response.status === 200) {
       alert('Ponto de coleta criado');
+
+      history.push('/');
     } else {
       alert('Aconteceu um erro ao criar o ponto de coleta');
     }
