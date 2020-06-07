@@ -1,8 +1,16 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import dotenv from 'dotenv';
 
 import routes from './routes';
+
+dotenv.config({
+  path:
+    process.env.NODE_ENV === 'development'
+      ? '.env.development'
+      : '.env.production',
+});
 
 const app = express();
 
