@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Feather as Icon, FontAwesome } from '@expo/vector-icons';
 import {
   View,
@@ -7,14 +7,49 @@ import {
   Image,
   Text,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { RectButton } from 'react-native-gesture-handler';
 
+import api from '../../services/api';
+
+interface IParams {
+  point_id: number;
+}
+
+interface IData {
+  point: {
+    image: string;
+    name: string;
+    email: string;
+    whatsapp: string;
+    city: string;
+    uf: string;
+  };
+  items: {
+    title: string;
+  }[];
+}
+
 const Detail = () => {
+  const [data, setData] = useState<IData>({} as IData);
   const navigation = useNavigation();
+  const route = useRoute();
+
+  const routeParams = route.params as IParams;
+
+  useEffect(() => {
+    api
+      .get(`points/${routeParams.point_id}`)
+      .then((response) => setData(response.data));
+  }, []);
 
   const handleNavigateBack = () => navigation.goBack();
+
+  if (!data.point) {
+    return <ActivityIndicator size={20} color="#34cb79" />;
+  }
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
